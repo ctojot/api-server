@@ -2,131 +2,104 @@
 
 const supertest = require('supertest');
 const server = require('../lib/server');
-const { sequelize, PokemonModel, TrainersModel } = require('../lib/models');
+const { sequelize, PokemonModel } = require('../lib/models');
 const request = supertest(server.app);
 
-// Built in jest function to setup test suite
+let testTrainer;
+
 beforeAll(async () => {
-  await sequelize.sync(); // sets up our tables before tests run
+  await sequelize.sync();
+  testTrainer = await PokemonModel.create({ name: 'test', type: 'test' });
 });
+
 afterAll(async () => {
-  await sequelize.drop(); // removes the tables we set up for our test environment
+  await sequelize.drop();
 });
 
 describe('Testing the REST Router', () => {
-
-  // TRAINERS TEST
-  // TEST CREATE
-  test('Should CREATE trainers (/trainers)', async () => {
-    let response = await request.post('/api/trainers').send({
-      name: 'Ash',
-      pokemonNum: '77',
-    });
-
-    expect(response.status).toEqual(200);
-    expect(response.body.name).toEqual('Ash');
-  });
-
-  // TEST READ
-  test('Should READ trainers (/trainers)', async () => {
-    let response = await request.get('/api/trainers');
+  test('Should READ pet', async () => {
+    let response = await request.get('/api/pokemon');
 
     expect(response.status).toEqual(200);
     expect(response.body.results).toBeTruthy();
   });
 
-  // Test UPDATE
-
-  test('Should UPDATE trainers (/trainers/1)', async () => {
-    let response = await request.patch('/api/trainers/1').send({
-      pokemonNum: 6,
-    });
-
-    expect(response.status).toEqual(200);
-    expect(response.body.pokemonNum).toEqual(6);
-  });
-
-  // TEST DELETE
-  test('Should DELETE trainers (/trainers/1)', async () => {
-    let response = await request.delete('/api/trainers/1');
-    console.log(response.status);
-    console.log(response.body);
-    expect(response.status).toEqual(204);
-  });
-
-  // POKEMON TESTS
-  // CREATE POKEMON
   test('Should CREATE pokemon', async () => {
-
     let response = await request.post('/api/pokemon').send({
       name: 'Pikachu',
-      type: 'electric',
-    });
-
+      personId: testTrainer.id,
+    }); 
+    console.log('THIS IS OUR RESPONSE BODY:', response.body);
     expect(response.status).toEqual(200);
-    console.log(response.body);
     expect(response.body.name).toEqual('Pikachu');
-
+    expect(response.body.personId).toEqual(1);
   });
 
-  // READ POKEMON
-  test('Should READ pokemon', async () => {
-
-    let response = await request.get('/api/pokemon');
-
-    expect(response.status).toEqual(200);
-    console.log(response.body);
-    expect(response.body.name).toBeTruthy();
-
-  });
-
-  // TEST UPDATE
   test('Should UPDATE pokemon', async () => {
-    let response = await request.patch('/api/pokemon/1').send({
-      name: 'Gengar',
+    let response = await request.put('/api/pokemon/1').send({
+      name: 'Pikachu',
+      personId: 2,
     });
 
     expect(response.status).toEqual(200);
-    expect(response.body.name).toEqual('Gengar');
+    expect(response.body.name).toEqual('Pikachu');
+    expect(response.body.personId).toEqual(2);
   });
-  // TEST DELETE
+
   test('Should DELETE pokemon', async () => {
+    let response = await request.delete('/api/pokemon');
 
-    let response = await request.delete('/api/pokemon/1');
-
-    expect(response.status).toEqual(204);
+    expect(response.status).toEqual(200);
   });
-
 });
 
-// ASSOCIATION TESTS
-describe('Testing model association', () => {
+describe('Testing the REST Router', () => {
+  test('Will this return a 404 error - bad path', async () => {
+    let response = await request.get('/api/notAnEndpoint');
 
-  let trainer;
-  let pokemon;
+    expect(response.status).toEqual(404);
+    expect(response.body.message).toEqual('Error 404 - Incorrect Path');
+  });
 
-  test('Create a trainer with a pokemon', async () => {
+  test('Will this return a 404 error - bad method', async () => {
+    let response = await request.patch('/api/trainer');
 
-    trainer = await TrainersModel.create({
+    expect(response.status).toEqual(404);
+    expect(response.body.message).toEqual('Error 404 - Incorrect Method');
+  });
+
+  test('Should READ trainer', async () => {
+    let response = await request.get('/api/trainer');
+
+    expect(response.status).toEqual(200);
+    expect(response.body.results).toBeTruthy();
+  });
+
+  test('Should CREATE trainer', async () => {
+    let response = await request.post('/api/trainer').send({
       name: 'Brock',
-      pokemonNum: '45',
-    });
-    pokemon = await PokemonModel.create({
-      name: 'Geodude',
-      trainerId: trainer.id,
+      pokeNum: 100,
     });
 
-    expect(trainer.name).toEqual('Brock');
-    expect(pokemon.name).toEqual('Geodude');
-    expect(pokemon.trainerId).toEqual(trainer.id);
+    expect(response.status).toEqual(200);
+    expect(response.body.name).toEqual('Brock');
+    expect(response.body.pokeNum).toEqual(100);
   });
 
-  test('Fetch a trainer and include all pokemon', async () => {
-    trainer = await TrainersModel.findOne({ where: { id: trainer.id }, include: PokemonModel });
-    console.log(trainer);
-    expect(trainer.name).toEqual('Brock');
-    expect(trainer.pokemonNum).toBeTruthy();
-    expect(trainer.pokemonNum[0].name).toEqual('Geodude');
+  test('Should UPDATE person', async () => {
+    let response = await request.put('/api/trainer/1').send({
+      name: 'Brock',
+      pokeNum: 50,
+    });
+
+    expect(response.status).toEqual(200);
+    expect(response.body.name).toEqual('Brock');
+    expect(response.body.age).toEqual(50);
   });
-  
+
+  test('Should DELETE trainer', async () => {
+    let response = await request.delete('/api/trainer/1');
+
+    expect(response.status).toEqual(200);
+  });
 });
